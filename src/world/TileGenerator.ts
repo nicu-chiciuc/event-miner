@@ -29,19 +29,10 @@ export class TileGenerator {
     // Calculate depth below surface
     const depth = y - this.config.surfaceLevel;
 
-    // Ore probabilities increase with depth
+    // Coal probability increases with depth
     const coalChance = Math.min(0.15, 0.05 + depth * 0.002);
-    const ironChance = Math.min(0.1, 0.01 + depth * 0.0015);
 
-    const roll = Math.random();
-
-    // Iron is rarer but more valuable
-    if (roll < ironChance) {
-      return TileType.IRON;
-    }
-
-    // Coal is more common
-    if (roll < ironChance + coalChance) {
+    if (Math.random() < coalChance) {
       return TileType.COAL;
     }
 

@@ -1,19 +1,29 @@
 import { Scene, GameObjects, Physics } from "phaser";
 import { TileGenerator } from "../world/TileGenerator.ts";
 import { Player } from "../entities/Player.ts";
+import { Refinery } from "../entities/Refinery.ts";
 import { TileType, WORLD_CONFIG, TILE_COLORS } from "../types/index.ts";
 
 export class GameScene extends Scene {
   private tileGenerator!: TileGenerator;
   private player!: Player;
+  private refinery!: Refinery;
   private tileSprites: Map<string, GameObjects.Sprite> = new Map();
   private tileGroup!: Physics.Arcade.StaticGroup;
+
+  // Time dilation settings
+  private readonly DILATION_RATE = 0.1; // 10% per tile deeper
 
   // UI elements
   private inventoryText!: GameObjects.Text;
   private fuelBarBg!: GameObjects.Rectangle;
   private fuelBarFill!: GameObjects.Rectangle;
-  private inventory = { coal: 0, iron: 0 };
+  private refineryUI!: GameObjects.Container;
+  private refineryStatusText!: GameObjects.Text;
+  private refineryPromptText!: GameObjects.Text;
+  private dilationText!: GameObjects.Text;
+  private uiCamera!: Phaser.Cameras.Scene2D.Camera;
+  private uiElements: GameObjects.GameObject[] = [];
 
   constructor() {
     super({ key: "GameScene" });
@@ -54,13 +64,36 @@ export class GameScene extends Scene {
     // Set up mining callback
     this.player.setTileMinedCallback(this.onTileMined.bind(this));
 
+    // Set up interact callback
+    this.player.setInteractCallback(this.onPlayerInteract.bind(this));
+
+    // Create refinery on surface (to the right of player start)
+    this.refinery = new Refinery(this, Math.floor(WORLD_CONFIG.width / 2) + 3);
+
     // Camera follows player
     this.cameras.main.startFollow(this.player.getSprite(), true, 0.1, 0.1);
-    this.cameras.main.setZoom(1);
-    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+    this.cameras.main.setZoom(0.5);
+    // Extend camera bounds upward to allow viewing when flying high
+    const skyHeight = 400;
+    this.cameras.main.setBounds(
+      0,
+      -skyHeight,
+      worldWidth,
+      worldHeight + skyHeight
+    );
+
+    // Create a separate UI camera that doesn't zoom
+    this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.uiCamera.setScroll(0, 0);
 
     // Create UI (fixed to camera)
     this.createUI();
+
+    // Make main camera ignore UI elements, and UI camera ignore everything else
+    this.cameras.main.ignore(this.uiElements);
+    this.uiCamera.ignore(this.tileGroup.getChildren());
+    this.uiCamera.ignore(this.player.getSprite());
+    this.uiCamera.ignore(this.refinery.getGameObjects());
   }
 
   private renderTiles(): void {
@@ -93,19 +126,68 @@ export class GameScene extends Scene {
       this.tileGroup.remove(sprite, true, true);
       this.tileSprites.delete(posKey);
 
-      // Add to inventory if it's an ore
+      // Add to player's inventory if it's coal
       if (type === TileType.COAL) {
-        this.inventory.coal++;
+        this.player.addCoal();
         this.updateInventoryUI();
         this.showMineEffect(x, y, 0x2c2c2c);
-      } else if (type === TileType.IRON) {
-        this.inventory.iron++;
-        this.updateInventoryUI();
-        this.showMineEffect(x, y, 0xb87333);
       } else {
         this.showMineEffect(x, y, 0x8b4513);
       }
     }
+  }
+
+  private onPlayerInteract(): void {
+    const pos = this.player.getPosition();
+
+    // Check if near refinery
+    if (this.refinery.isPlayerInRange(pos.x, pos.y)) {
+      const accumulatedFuel = this.refinery.getAccumulatedFuel();
+
+      // If refinery has fuel ready, collect it
+      if (accumulatedFuel > 0) {
+        const collected = this.refinery.collectFuel();
+        this.player.addFuel(collected);
+        this.showCollectEffect("+", collected.toString(), "FUEL", 0x00ff00);
+      }
+      // If player has coal, deposit it
+      else if (this.player.hasCoal()) {
+        const deposited = this.player.depositAllCoal();
+        this.refinery.depositCoal(deposited);
+        this.updateInventoryUI();
+        this.showCollectEffect("-", deposited.toString(), "COAL", 0xffaa00);
+      }
+    }
+  }
+
+  private showCollectEffect(
+    prefix: string,
+    amount: string,
+    label: string,
+    color: number
+  ): void {
+    const pos = this.player.getPosition();
+    const text = this.add.text(
+      pos.x,
+      pos.y - 40,
+      `${prefix}${amount} ${label}`,
+      {
+        fontSize: "16px",
+        color: "#" + color.toString(16).padStart(6, "0"),
+        fontStyle: "bold",
+      }
+    );
+    text.setOrigin(0.5);
+    text.setDepth(200);
+
+    this.tweens.add({
+      targets: text,
+      y: pos.y - 80,
+      alpha: 0,
+      duration: 1000,
+      ease: "Power2",
+      onComplete: () => text.destroy(),
+    });
   }
 
   private showMineEffect(tileX: number, tileY: number, color: number): void {
@@ -147,8 +229,8 @@ export class GameScene extends Scene {
       backgroundColor: "#000000aa",
       padding: { x: 12, y: 8 },
     });
-    this.inventoryText.setScrollFactor(0); // Fixed to camera
     this.inventoryText.setDepth(100);
+    this.uiElements.push(this.inventoryText);
 
     this.updateInventoryUI();
 
@@ -163,8 +245,8 @@ export class GameScene extends Scene {
       fontSize: "12px",
       color: "#ffffff",
     });
-    fuelLabel.setScrollFactor(0);
     fuelLabel.setDepth(100);
+    this.uiElements.push(fuelLabel);
 
     // Background bar
     this.fuelBarBg = this.add.rectangle(
@@ -175,8 +257,8 @@ export class GameScene extends Scene {
       0x333333
     );
     this.fuelBarBg.setOrigin(0, 0.5);
-    this.fuelBarBg.setScrollFactor(0);
     this.fuelBarBg.setDepth(100);
+    this.uiElements.push(this.fuelBarBg);
 
     // Fill bar
     this.fuelBarFill = this.add.rectangle(
@@ -187,14 +269,14 @@ export class GameScene extends Scene {
       0x00ff00
     );
     this.fuelBarFill.setOrigin(0, 0.5);
-    this.fuelBarFill.setScrollFactor(0);
     this.fuelBarFill.setDepth(101);
+    this.uiElements.push(this.fuelBarFill);
 
     // Add controls help text
     const helpText = this.add.text(
       16,
       85,
-      "WASD/Arrows: Move & Mine\nUp/W: Fly (uses fuel)",
+      "WASD/Arrows: Move & Mine\nUp/W: Fly | E: Interact",
       {
         fontSize: "14px",
         color: "#ffffff",
@@ -202,19 +284,67 @@ export class GameScene extends Scene {
         padding: { x: 12, y: 8 },
       }
     );
-    helpText.setScrollFactor(0);
     helpText.setDepth(100);
+    this.uiElements.push(helpText);
+
+    // Time dilation display
+    this.dilationText = this.add.text(16, 145, "Time: x1.0", {
+      fontSize: "16px",
+      color: "#00ffff",
+      backgroundColor: "#000000aa",
+      padding: { x: 12, y: 8 },
+      fontStyle: "bold",
+    });
+    this.dilationText.setDepth(100);
+    this.uiElements.push(this.dilationText);
+
+    // Create refinery UI (hidden by default)
+    this.createRefineryUI();
+  }
+
+  private createRefineryUI(): void {
+    this.refineryUI = this.add.container(0, 0);
+    this.refineryUI.setDepth(100);
+    this.refineryUI.setVisible(false);
+    this.uiElements.push(this.refineryUI);
+
+    // Background - positioned at bottom center
+    const bg = this.add.rectangle(400, 500, 450, 160, 0x000000, 0.9);
+    bg.setStrokeStyle(3, 0x888888);
+
+    // Status text - top of the panel
+    this.refineryStatusText = this.add.text(190, 435, "", {
+      fontSize: "18px",
+      color: "#ffffff",
+      lineSpacing: 8,
+    });
+
+    // Prompt text - bottom of the panel
+    this.refineryPromptText = this.add.text(400, 560, "", {
+      fontSize: "20px",
+      color: "#ffff00",
+      fontStyle: "bold",
+    });
+    this.refineryPromptText.setOrigin(0.5);
+
+    this.refineryUI.add([bg, this.refineryStatusText, this.refineryPromptText]);
   }
 
   private updateInventoryUI(): void {
-    this.inventoryText.setText(
-      `Coal: ${this.inventory.coal}  |  Iron: ${this.inventory.iron}`
-    );
+    const coal = this.player.getCoal();
+    this.inventoryText.setText(`Coal: ${coal}`);
   }
 
   update(time: number, delta: number): void {
     this.player.update(time, delta);
+
+    // Apply time dilation to refinery - runs slower from player's perspective when deep
+    const dilation = this.getTimeDilation();
+    this.refinery.update(delta / dilation);
+
     this.updateFuelBar();
+    this.updateRefineryUI();
+    this.updateDilationUI(dilation);
   }
 
   private updateFuelBar(): void {
@@ -230,5 +360,80 @@ export class GameScene extends Scene {
     } else {
       this.fuelBarFill.fillColor = 0xff0000; // Red
     }
+  }
+
+  private updateDilationUI(dilation: number): void {
+    this.dilationText.setText(`Time: x${dilation.toFixed(2)}`);
+
+    // Color based on dilation direction and intensity
+    if (dilation < 0.8) {
+      this.dilationText.setColor("#4444ff"); // Blue when far above surface (time slowed)
+    } else if (dilation < 1.0) {
+      this.dilationText.setColor("#44aaff"); // Light blue when above surface
+    } else if (dilation < 2) {
+      this.dilationText.setColor("#00ffff"); // Cyan at low dilation
+    } else if (dilation < 5) {
+      this.dilationText.setColor("#ff00ff"); // Magenta at medium
+    } else {
+      this.dilationText.setColor("#ff4444"); // Red at high dilation
+    }
+  }
+
+  private updateRefineryUI(): void {
+    const pos = this.player.getPosition();
+    const inRange = this.refinery.isPlayerInRange(pos.x, pos.y);
+
+    this.refineryUI.setVisible(inRange);
+
+    if (inRange) {
+      const queue = this.refinery.getQueueCount();
+      const progress = this.refinery.getCurrentProgress();
+      const fuel = this.refinery.getAccumulatedFuel();
+      const playerCoal = this.player.getCoal();
+
+      // Build status text
+      let status = "=== REFINERY ===\n";
+      status += `Queue: ${queue} Coal\n`;
+
+      if (progress !== null) {
+        const progressBar = this.makeProgressBar(progress);
+        status += `Processing: ${progressBar}`;
+      } else {
+        status += "Processing: Idle";
+      }
+
+      status += `\nFuel Ready: ${Math.floor(fuel)}`;
+
+      this.refineryStatusText.setText(status);
+
+      // Build prompt text
+      if (fuel > 0) {
+        this.refineryPromptText.setText(`[E] Collect ${Math.floor(fuel)} Fuel`);
+        this.refineryPromptText.setColor("#00ff00");
+      } else if (playerCoal > 0) {
+        this.refineryPromptText.setText(`[E] Deposit ${playerCoal} Coal`);
+        this.refineryPromptText.setColor("#ffaa00");
+      } else {
+        this.refineryPromptText.setText("Mine coal to deposit");
+        this.refineryPromptText.setColor("#888888");
+      }
+    }
+  }
+
+  private makeProgressBar(progress: number): string {
+    const filled = Math.floor(progress * 10);
+    const empty = 10 - filled;
+    return "[" + "=".repeat(filled) + "-".repeat(empty) + "]";
+  }
+
+  private getTimeDilation(): number {
+    const playerTileY = Math.floor(
+      this.player.getPosition().y / WORLD_CONFIG.tileSize
+    );
+    // Player stands ON the surface (one tile above ground level)
+    const groundLevel = WORLD_CONFIG.surfaceLevel - 1;
+    const depth = playerTileY - groundLevel;
+    // Exponential: 1.1^depth - works both ways (slower above, faster below)
+    return Math.pow(1 + this.DILATION_RATE, depth);
   }
 }
