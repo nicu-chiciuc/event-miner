@@ -1,20 +1,22 @@
-import { Scene, GameObjects, Physics } from 'phaser';
-import { TileGenerator } from '../world/TileGenerator.ts';
-import { Player } from '../entities/Player.ts';
-import { TileType, WORLD_CONFIG, TILE_COLORS } from '../types/index.ts';
+import { Scene, GameObjects, Physics } from "phaser";
+import { TileGenerator } from "../world/TileGenerator.ts";
+import { Player } from "../entities/Player.ts";
+import { TileType, WORLD_CONFIG, TILE_COLORS } from "../types/index.ts";
 
 export class GameScene extends Scene {
   private tileGenerator!: TileGenerator;
   private player!: Player;
   private tileSprites: Map<string, GameObjects.Sprite> = new Map();
   private tileGroup!: Physics.Arcade.StaticGroup;
-  
+
   // UI elements
   private inventoryText!: GameObjects.Text;
+  private fuelBarBg!: GameObjects.Rectangle;
+  private fuelBarFill!: GameObjects.Rectangle;
   private inventory = { coal: 0, iron: 0 };
 
   constructor() {
-    super({ key: 'GameScene' });
+    super({ key: "GameScene" });
   }
 
   create(): void {
@@ -28,7 +30,7 @@ export class GameScene extends Scene {
 
     // Generate the world
     this.tileGenerator = new TileGenerator();
-    
+
     // Create static group for collision tiles
     this.tileGroup = this.physics.add.staticGroup();
 
@@ -37,8 +39,14 @@ export class GameScene extends Scene {
 
     // Create player at surface level
     const playerStartX = (WORLD_CONFIG.width / 2) * WORLD_CONFIG.tileSize;
-    const playerStartY = (WORLD_CONFIG.surfaceLevel - 1) * WORLD_CONFIG.tileSize;
-    this.player = new Player(this, playerStartX, playerStartY, this.tileGenerator);
+    const playerStartY =
+      (WORLD_CONFIG.surfaceLevel - 1) * WORLD_CONFIG.tileSize;
+    this.player = new Player(
+      this,
+      playerStartX,
+      playerStartY,
+      this.tileGenerator
+    );
 
     // Set up collision between player and tiles
     this.physics.add.collider(this.player.getSprite(), this.tileGroup);
@@ -71,7 +79,7 @@ export class GameScene extends Scene {
       const sprite = this.tileGroup.create(x, y, key) as Physics.Arcade.Sprite;
       sprite.setImmovable(true);
       sprite.refreshBody();
-      
+
       this.tileSprites.set(posKey, sprite);
     }
   }
@@ -119,10 +127,10 @@ export class GameScene extends Scene {
     const graphics = this.add.graphics();
     graphics.fillStyle(color, 1);
     graphics.fillRect(0, 0, 6, 6);
-    graphics.generateTexture('particle_' + color, 6, 6);
+    graphics.generateTexture("particle_" + color, 6, 6);
     graphics.destroy();
 
-    particles.setTexture('particle_' + color);
+    particles.setTexture("particle_" + color);
     particles.explode(8);
 
     // Clean up after animation
@@ -133,24 +141,67 @@ export class GameScene extends Scene {
 
   private createUI(): void {
     // Create inventory display
-    this.inventoryText = this.add.text(16, 16, '', {
-      fontSize: '18px',
-      color: '#ffffff',
-      backgroundColor: '#000000aa',
+    this.inventoryText = this.add.text(16, 16, "", {
+      fontSize: "18px",
+      color: "#ffffff",
+      backgroundColor: "#000000aa",
       padding: { x: 12, y: 8 },
     });
     this.inventoryText.setScrollFactor(0); // Fixed to camera
     this.inventoryText.setDepth(100);
-    
+
     this.updateInventoryUI();
 
-    // Add controls help text
-    const helpText = this.add.text(16, 70, 'WASD/Arrows: Move & Mine\nUp/W: Jump', {
-      fontSize: '14px',
-      color: '#ffffff',
-      backgroundColor: '#000000aa',
-      padding: { x: 12, y: 8 },
+    // Create fuel bar
+    const fuelBarWidth = 150;
+    const fuelBarHeight = 16;
+    const fuelBarX = 16;
+    const fuelBarY = 56;
+
+    // Fuel label
+    const fuelLabel = this.add.text(fuelBarX, fuelBarY - 2, "FUEL", {
+      fontSize: "12px",
+      color: "#ffffff",
     });
+    fuelLabel.setScrollFactor(0);
+    fuelLabel.setDepth(100);
+
+    // Background bar
+    this.fuelBarBg = this.add.rectangle(
+      fuelBarX + 40,
+      fuelBarY + 6,
+      fuelBarWidth,
+      fuelBarHeight,
+      0x333333
+    );
+    this.fuelBarBg.setOrigin(0, 0.5);
+    this.fuelBarBg.setScrollFactor(0);
+    this.fuelBarBg.setDepth(100);
+
+    // Fill bar
+    this.fuelBarFill = this.add.rectangle(
+      fuelBarX + 42,
+      fuelBarY + 6,
+      fuelBarWidth - 4,
+      fuelBarHeight - 4,
+      0x00ff00
+    );
+    this.fuelBarFill.setOrigin(0, 0.5);
+    this.fuelBarFill.setScrollFactor(0);
+    this.fuelBarFill.setDepth(101);
+
+    // Add controls help text
+    const helpText = this.add.text(
+      16,
+      85,
+      "WASD/Arrows: Move & Mine\nUp/W: Fly (uses fuel)",
+      {
+        fontSize: "14px",
+        color: "#ffffff",
+        backgroundColor: "#000000aa",
+        padding: { x: 12, y: 8 },
+      }
+    );
     helpText.setScrollFactor(0);
     helpText.setDepth(100);
   }
@@ -161,8 +212,23 @@ export class GameScene extends Scene {
     );
   }
 
-  update(time: number): void {
-    this.player.update(time);
+  update(time: number, delta: number): void {
+    this.player.update(time, delta);
+    this.updateFuelBar();
+  }
+
+  private updateFuelBar(): void {
+    const fuelPercent = this.player.getFuel() / this.player.getMaxFuel();
+    const maxWidth = 146; // fuelBarWidth - 4
+    this.fuelBarFill.width = maxWidth * fuelPercent;
+
+    // Change color based on fuel level
+    if (fuelPercent > 0.5) {
+      this.fuelBarFill.fillColor = 0x00ff00; // Green
+    } else if (fuelPercent > 0.25) {
+      this.fuelBarFill.fillColor = 0xffff00; // Yellow
+    } else {
+      this.fuelBarFill.fillColor = 0xff0000; // Red
+    }
   }
 }
-

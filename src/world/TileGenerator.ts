@@ -1,5 +1,5 @@
-import { TileType, WORLD_CONFIG } from '../types/index.ts';
-import type { TileData, WorldConfig } from '../types/index.ts';
+import { TileType, WORLD_CONFIG } from "../types/index.ts";
+import type { TileData, WorldConfig } from "../types/index.ts";
 
 export class TileGenerator {
   private config: WorldConfig;
@@ -31,7 +31,7 @@ export class TileGenerator {
 
     // Ore probabilities increase with depth
     const coalChance = Math.min(0.15, 0.05 + depth * 0.002);
-    const ironChance = Math.min(0.10, 0.01 + depth * 0.0015);
+    const ironChance = Math.min(0.1, 0.01 + depth * 0.0015);
 
     const roll = Math.random();
 
@@ -80,4 +80,3 @@ export class TileGenerator {
     return this.config;
   }
 }
-
