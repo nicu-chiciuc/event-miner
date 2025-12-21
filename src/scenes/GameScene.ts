@@ -2,7 +2,7 @@ import { Scene, GameObjects, Physics } from "phaser";
 import { TileGenerator } from "../world/TileGenerator.ts";
 import { Player } from "../entities/Player.ts";
 import { Refinery } from "../entities/Refinery.ts";
-import { TileType, WORLD_CONFIG, TILE_COLORS } from "../types/index.ts";
+import { TileType, WORLD_CONFIG } from "../types/index.ts";
 
 export class GameScene extends Scene {
   private tileGenerator!: TileGenerator;
@@ -25,6 +25,9 @@ export class GameScene extends Scene {
   private uiCamera!: Phaser.Cameras.Scene2D.Camera;
   private uiElements: GameObjects.GameObject[] = [];
 
+  // Parallax background elements
+  private parallaxElements: GameObjects.GameObject[] = [];
+
   constructor() {
     super({ key: "GameScene" });
   }
@@ -35,8 +38,11 @@ export class GameScene extends Scene {
     const worldHeight = WORLD_CONFIG.height * WORLD_CONFIG.tileSize;
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
 
-    // Set background color (sky blue)
-    this.cameras.main.setBackgroundColor(TILE_COLORS[TileType.AIR]);
+    // Set alien sky gradient background
+    this.cameras.main.setBackgroundColor(0x1a0a2a);
+
+    // Create parallax background layers
+    this.createParallaxBackground(worldWidth);
 
     // Generate the world
     this.tileGenerator = new TileGenerator();
@@ -94,6 +100,87 @@ export class GameScene extends Scene {
     this.uiCamera.ignore(this.tileGroup.getChildren());
     this.uiCamera.ignore(this.player.getSprite());
     this.uiCamera.ignore(this.refinery.getGameObjects());
+    this.uiCamera.ignore(this.parallaxElements);
+  }
+
+  private createParallaxBackground(worldWidth: number): void {
+    const surfaceY = WORLD_CONFIG.surfaceLevel * WORLD_CONFIG.tileSize;
+
+    // Layer 1: Far mountains (slowest - 10% scroll)
+    this.createMountainLayer(
+      worldWidth,
+      surfaceY + 20,
+      0x2a1a3a, // Dark purple
+      0.1,
+      -10,
+      [0.4, 0.7, 0.5, 0.85, 0.6, 0.9, 0.45, 0.75, 0.55, 0.8]
+    );
+
+    // Layer 2: Mid mountains (25% scroll)
+    this.createMountainLayer(
+      worldWidth,
+      surfaceY + 30,
+      0x3d2852, // Medium purple
+      0.25,
+      -9,
+      [0.5, 0.85, 0.65, 0.95, 0.55, 0.8, 0.7, 0.9]
+    );
+
+    // Layer 3: Near mountains (40% scroll)
+    this.createMountainLayer(
+      worldWidth,
+      surfaceY + 40,
+      0x4f3666, // Lighter purple
+      0.4,
+      -8,
+      [0.6, 0.95, 0.75, 1.0, 0.7, 0.9, 0.8]
+    );
+
+    // Add an alien sun in the sky
+    const sun = this.add.circle(worldWidth * 0.75, -80, 50, 0xff6644, 0.9);
+    sun.setScrollFactor(0.05);
+    sun.setDepth(-11);
+    this.parallaxElements.push(sun);
+
+    // Sun glow
+    const sunGlow = this.add.circle(worldWidth * 0.75, -80, 90, 0xff4422, 0.3);
+    sunGlow.setScrollFactor(0.05);
+    sunGlow.setDepth(-12);
+    this.parallaxElements.push(sunGlow);
+  }
+
+  private createMountainLayer(
+    worldWidth: number,
+    baseY: number,
+    color: number,
+    scrollFactor: number,
+    depth: number,
+    peaks: number[]
+  ): void {
+    const graphics = this.add.graphics();
+    graphics.fillStyle(color, 1);
+
+    const totalWidth = worldWidth * 2;
+    const startX = -worldWidth * 0.5;
+    const segmentWidth = totalWidth / (peaks.length - 1);
+    const maxHeight = 180;
+
+    graphics.beginPath();
+    graphics.moveTo(startX, baseY + 300);
+
+    for (let i = 0; i < peaks.length; i++) {
+      const x = startX + i * segmentWidth;
+      const peakY = baseY - peaks[i] * maxHeight;
+      graphics.lineTo(x, peakY);
+    }
+
+    graphics.lineTo(startX + totalWidth, baseY + 300);
+    graphics.closePath();
+    graphics.fill();
+
+    graphics.setScrollFactor(scrollFactor);
+    graphics.setDepth(depth);
+    this.parallaxElements.push(graphics);
   }
 
   private renderTiles(): void {
@@ -427,12 +514,11 @@ export class GameScene extends Scene {
   }
 
   private getTimeDilation(): number {
-    const playerTileY = Math.floor(
-      this.player.getPosition().y / WORLD_CONFIG.tileSize
-    );
-    // Player stands ON the surface (one tile above ground level)
-    const groundLevel = WORLD_CONFIG.surfaceLevel - 1;
-    const depth = playerTileY - groundLevel;
+    // Use continuous Y position for smooth dilation changes
+    const playerY = this.player.getPosition().y / WORLD_CONFIG.tileSize;
+    // Adjusted for where player actually rests when standing on ground
+    const groundLevel = WORLD_CONFIG.surfaceLevel - 0.2;
+    const depth = playerY - groundLevel;
     // Exponential: 1.1^depth - works both ways (slower above, faster below)
     return Math.pow(1 + this.DILATION_RATE, depth);
   }
