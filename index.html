@@ -27,11 +27,43 @@
       border-radius: 8px;
       box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
     }
+
+    .samebase-attribution {
+      align-items: center;
+      background: rgba(255, 255, 255, 0.9);
+      bottom: max(8px, env(safe-area-inset-bottom));
+      color: #394447;
+      display: inline-flex;
+      font: 12px system-ui, sans-serif;
+      gap: 4px;
+      left: max(8px, env(safe-area-inset-left));
+      min-height: 44px;
+      padding: 0 10px;
+      position: fixed;
+      text-decoration: none;
+      z-index: 2;
+    }
+
+    .samebase-attribution img {
+      height: 14px;
+      width: 14px;
+    }
+
+    .samebase-attribution:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
   </style>
 </head>
 
 <body>
   <div id="game-container"></div>
+  <a class="samebase-attribution" href="https://samebase.com" target="_blank" rel="noopener noreferrer"
+    aria-label="Managed with Samebase">
+    <span>Managed with</span>
+    <img src="/samebase-logo.svg" alt="">
+    <span>Samebase</span>
+  </a>
   <script type="module" src="/src/main.ts"></script>
 </body>
 
