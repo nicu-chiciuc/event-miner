@@ -19,7 +19,12 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      overflow: hidden;
+    }
+
+    .game-shell {
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
     }
 
     #game-container {
@@ -27,11 +32,58 @@
       border-radius: 8px;
       box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
     }
+
+    .samebase-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0 8px;
+    }
+
+    .samebase-attribution {
+      align-items: center;
+      color: #9a9aad;
+      display: inline-flex;
+      font: 12px system-ui, sans-serif;
+      min-height: 44px;
+      text-decoration: none;
+    }
+
+    .samebase-attribution-text {
+      border-bottom: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .samebase-attribution:hover .samebase-attribution-text {
+      border-bottom-color: currentColor;
+    }
+
+    .samebase-attribution svg {
+      display: inline-block;
+      height: 0.75em;
+      margin-right: 0.15em;
+      vertical-align: baseline;
+      width: 0.75em;
+    }
+
+    .samebase-attribution:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
   </style>
 </head>
 
 <body>
-  <div id="game-container"></div>
+  <main class="game-shell">
+    <div id="game-container"></div>
+    <footer class="samebase-footer">
+      <a class="samebase-attribution" href="https://samebase.com" target="_blank" rel="noopener noreferrer">
+        <span class="samebase-attribution-text">Managed with <b><svg xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 60 60" width="0.75em" height="0.75em" shape-rendering="crispEdges" aria-hidden="true">
+              <path d="M0 0h60v60H0z M20 20h20v20H20z" fill="currentColor" fill-rule="evenodd" />
+            </svg>Samebase</b></span>
+      </a>
+    </footer>
+  </main>
   <script type="module" src="/src/main.ts"></script>
 </body>
 
