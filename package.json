@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "typescript": "~5.9.3",
-    "vite": "^7.2.4",
+    "vite": "^7.3.6",
     "wrangler": "4.145.0"
   },
   "dependencies": {
