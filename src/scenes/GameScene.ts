@@ -1,18 +1,17 @@
-import { Scene, GameObjects, Physics } from "phaser";
+import { Scene, GameObjects, Physics, Input } from "phaser";
 import { TileGenerator } from "../world/TileGenerator.ts";
 import { Player } from "../entities/Player.ts";
 import { Refinery } from "../entities/Refinery.ts";
 import { TileType, WORLD_CONFIG } from "../types/index.ts";
+import { tweaks } from "../tweaks.ts";
 
 export class GameScene extends Scene {
   private tileGenerator!: TileGenerator;
   private player!: Player;
-  private refinery!: Refinery;
+  private refineries: Refinery[] = [];
+  private buildKey: Input.Keyboard.Key | null = null;
   private tileSprites: Map<string, GameObjects.Sprite> = new Map();
   private tileGroup!: Physics.Arcade.StaticGroup;
-
-  // Time dilation settings
-  private readonly DILATION_RATE = 0.1; // 10% per tile deeper
 
   // UI elements
   private inventoryText!: GameObjects.Text;
@@ -74,7 +73,17 @@ export class GameScene extends Scene {
     this.player.setInteractCallback(this.onPlayerInteract.bind(this));
 
     // Create refinery on surface (to the right of player start)
-    this.refinery = new Refinery(this, Math.floor(WORLD_CONFIG.width / 2) + 3);
+    const tileSize = WORLD_CONFIG.tileSize;
+    this.refineries.push(
+      new Refinery(
+        this,
+        (Math.floor(WORLD_CONFIG.width / 2) + 3) * tileSize + tileSize / 2,
+        WORLD_CONFIG.surfaceLevel * tileSize - 40,
+        0,
+        1
+      )
+    );
+    this.buildKey = this.input.keyboard?.addKey(Input.Keyboard.KeyCodes.B) ?? null;
 
     // Camera follows player
     this.cameras.main.startFollow(this.player.getSprite(), true, 0.1, 0.1);
@@ -99,7 +108,7 @@ export class GameScene extends Scene {
     this.cameras.main.ignore(this.uiElements);
     this.uiCamera.ignore(this.tileGroup.getChildren());
     this.uiCamera.ignore(this.player.getSprite());
-    this.uiCamera.ignore(this.refinery.getGameObjects());
+    this.uiCamera.ignore(this.refineries[0].getGameObjects());
     this.uiCamera.ignore(this.parallaxElements);
   }
 
@@ -224,23 +233,43 @@ export class GameScene extends Scene {
     }
   }
 
-  private onPlayerInteract(): void {
+  private nearestRefinery(): Refinery | undefined {
     const pos = this.player.getPosition();
+    return this.refineries.find((refinery) => refinery.isPlayerInRange(pos.x, pos.y));
+  }
 
-    // Check if near refinery
-    if (this.refinery.isPlayerInRange(pos.x, pos.y)) {
-      const accumulatedFuel = this.refinery.getAccumulatedFuel();
+  private tryBuildRefinery(): void {
+    const pos = this.player.getPosition();
+    const cost = tweaks.refineryCostInCoal;
+    if (this.refineries.some((refinery) => refinery.isPlayerInRange(pos.x, pos.y, 96))) return;
+    if (this.player.getCoal() < cost) {
+      this.showCollectEffect("need ", cost.toString(), "COAL", 0xff4444);
+      return;
+    }
+    this.player.spendCoal(cost);
+    this.updateInventoryUI();
+    const refinery = new Refinery(this, pos.x, pos.y, this.getPlayerDepthTiles(), 0.5);
+    this.refineries.push(refinery);
+    this.uiCamera.ignore(refinery.getGameObjects());
+    this.showCollectEffect("-", cost.toString(), "COAL", 0xffaa00);
+  }
+
+  private onPlayerInteract(): void {
+    const refinery = this.nearestRefinery();
+
+    if (refinery) {
+      const accumulatedFuel = refinery.getAccumulatedFuel();
 
       // If refinery has fuel ready, collect it
       if (accumulatedFuel > 0) {
-        const collected = this.refinery.collectFuel();
+        const collected = refinery.collectFuel();
         this.player.addFuel(collected);
         this.showCollectEffect("+", collected.toString(), "FUEL", 0x00ff00);
       }
       // If player has coal, deposit it
       else if (this.player.hasCoal()) {
         const deposited = this.player.depositAllCoal();
-        this.refinery.depositCoal(deposited);
+        refinery.depositCoal(deposited);
         this.updateInventoryUI();
         this.showCollectEffect("-", deposited.toString(), "COAL", 0xffaa00);
       }
@@ -363,7 +392,7 @@ export class GameScene extends Scene {
     const helpText = this.add.text(
       16,
       85,
-      "WASD/Arrows: Move & Mine\nUp/W: Fly | E: Interact",
+      "WASD/Arrows: Move & Mine\nUp/W: Fly | E: Interact | B: Build refinery",
       {
         fontSize: "14px",
         color: "#ffffff",
@@ -424,14 +453,17 @@ export class GameScene extends Scene {
 
   update(time: number, delta: number): void {
     this.player.update(time, delta);
+    if (this.buildKey && Input.Keyboard.JustDown(this.buildKey)) this.tryBuildRefinery();
 
-    // Apply time dilation to refinery - runs slower from player's perspective when deep
-    const dilation = this.getTimeDilation();
-    this.refinery.update(delta / dilation);
+    // Each refinery runs on the clock of its own depth, seen from the player's depth.
+    const playerDepth = this.getPlayerDepthTiles();
+    for (const refinery of this.refineries) {
+      refinery.update(delta * this.clockRate(refinery.depthTiles, playerDepth));
+    }
 
     this.updateFuelBar();
     this.updateRefineryUI();
-    this.updateDilationUI(dilation);
+    this.updateDilationUI(1 / this.clockRate(0, playerDepth));
   }
 
   private updateFuelBar(): void {
@@ -467,15 +499,14 @@ export class GameScene extends Scene {
   }
 
   private updateRefineryUI(): void {
-    const pos = this.player.getPosition();
-    const inRange = this.refinery.isPlayerInRange(pos.x, pos.y);
+    const refinery = this.nearestRefinery();
 
-    this.refineryUI.setVisible(inRange);
+    this.refineryUI.setVisible(refinery !== undefined);
 
-    if (inRange) {
-      const queue = this.refinery.getQueueCount();
-      const progress = this.refinery.getCurrentProgress();
-      const fuel = this.refinery.getAccumulatedFuel();
+    if (refinery) {
+      const queue = refinery.getQueueCount();
+      const progress = refinery.getCurrentProgress();
+      const fuel = refinery.getAccumulatedFuel();
       const playerCoal = this.player.getCoal();
 
       // Build status text
@@ -513,13 +544,15 @@ export class GameScene extends Scene {
     return "[" + "=".repeat(filled) + "-".repeat(empty) + "]";
   }
 
-  private getTimeDilation(): number {
-    // Use continuous Y position for smooth dilation changes
-    const playerY = this.player.getPosition().y / WORLD_CONFIG.tileSize;
-    // Adjusted for where player actually rests when standing on ground
+  private getPlayerDepthTiles(): number {
+    // Adjusted for where the player rests when standing on the ground
     const groundLevel = WORLD_CONFIG.surfaceLevel - 0.2;
-    const depth = playerY - groundLevel;
-    // Exponential: 1.1^depth - works both ways (slower above, faster below)
-    return Math.pow(1 + this.DILATION_RATE, depth);
+    return this.player.getPosition().y / WORLD_CONFIG.tileSize - groundLevel;
+  }
+
+  /** Milliseconds that pass at `targetDepth` during one millisecond of the player at `playerDepth`. */
+  private clockRate(targetDepth: number, playerDepth: number): number {
+    const tilesDeeper = targetDepth - playerDepth;
+    return Math.pow(tweaks.timeFactorPerTile, tweaks.deeperIsFaster ? tilesDeeper : -tilesDeeper);
   }
 }

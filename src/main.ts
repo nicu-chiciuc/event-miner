@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { BootScene } from "./scenes/BootScene.ts";
 import { GameScene } from "./scenes/GameScene.ts";
+import { createTweaksPanel } from "./tweaks.ts";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -24,3 +25,4 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 new Phaser.Game(config);
+createTweaksPanel();

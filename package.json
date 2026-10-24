@@ -16,6 +16,7 @@
     "wrangler": "4.145.0"
   },
   "dependencies": {
+    "lil-gui": "^0.21.0",
     "phaser": "^4.0.0-rc.5"
   }
 }
