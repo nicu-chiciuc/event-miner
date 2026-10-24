@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#10232d" />
+    <title>Sand | Event Miner</title>
+  </head>
+  <body>
+    <canvas id="world" aria-label="Sand, a digging experiment in gravitational time dilation"></canvas>
+    <header>
+      <div class="nav"><a href="/">← All experiments</a><span>SAND</span><div><button id="restart-button" aria-label="Restart run">R / Restart</button><button id="help-button" aria-label="Open help">H / Help</button></div></div>
+      <div class="readings"><div><small>DEPTH</small><strong id="depth">0 m</strong></div><div><small>SURFACE RATE</small><strong id="stretch">x1</strong></div><div><small>YOUR TIME</small><strong id="local">0 s</strong></div><div><small>SURFACE TIME</small><strong id="surface">0 s</strong></div></div>
+      <p id="exchange">1 min here = 1 min at the surface</p>
+    </header>
+    <aside id="rate-note">Material motion capped at 8x; striped rows show excess.</aside>
+    <footer><div class="objective"><span id="cargo">◇ 0 / 20</span><span id="objective">Find crystals below 200 m</span></div><div class="fuel"><label for="fuel">THRUST</label><meter id="fuel" min="0" max="100" value="100"></meter><span id="condition">Release to refill</span></div><p class="keyboard">WASD / arrows steer · Space thrust · X / click drill · Q look up · R restart</p></footer>
+    <div id="touch-controls" aria-label="Touch controls"><div class="direction-pad"><button data-key="ArrowUp" aria-label="Thrust up">↑</button><button data-key="ArrowLeft" aria-label="Move left">←</button><button data-key="ArrowDown" aria-label="Aim down">↓</button><button data-key="ArrowRight" aria-label="Move right">→</button></div><div class="actions"><button data-key="KeyQ">LOOK</button><button data-key="KeyX">DRILL</button></div></div>
+    <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title"><section><p class="eyebrow">EVENT MINER / MATERIAL STUDY</p><h1 id="overlay-title">The world<br>runs ahead.</h1><div id="overlay-copy"><p>WASD / arrows steer. Space thrusts. Hold X or click to drill.</p><p>Bring 20 deep crystals back to the surface. Watch the rain race above you.</p><p>Q looks up. R restarts. H opens help.</p></div><button id="begin">Any key or tap to descend</button></section></div>
+    <div id="receipt" role="status"></div>
+    <script type="module" src="/src/experiments/sand/main.ts"></script>
+  </body>
+</html>
