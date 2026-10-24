@@ -14,10 +14,12 @@ export function formatDuration(seconds: number): string {
   return `${shown.toLocaleString("en-US")} ${unit}`;
 }
 
-/** 8 -> "x8", 65_536 -> "x65,536", 0.25 -> "x1/4", 2.4 -> "x2.4". */
+/** 8 -> "x8", 65_536 -> "x65,536", 0.25 -> "x1/4", 0.99 -> "x1", 2.4 -> "x2.4". */
 export function formatStretch(stretch: number): string {
   if (stretch < 1) {
-    return `x1/${Math.round(1 / stretch)}`;
+    const inverse = 1 / stretch;
+    const shownInverse = inverse < 10 ? Math.round(inverse * 10) / 10 : Math.round(inverse);
+    return shownInverse <= 1 ? "x1" : `x1/${shownInverse}`;
   }
   const shown = stretch < 10 ? Math.round(stretch * 10) / 10 : Math.round(stretch);
   return `x${shown.toLocaleString("en-US")}`;
