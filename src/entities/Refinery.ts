@@ -1,8 +1,5 @@
 import { Scene, GameObjects } from "phaser";
-import { WORLD_CONFIG } from "../types/index.ts";
-
-// Coal processing time - 1 fuel every 5 seconds
-const COAL_PROCESSING_TIME = 5000;
+import { tweaks } from "../tweaks.ts";
 
 export class Refinery {
   private scene: Scene;
@@ -18,29 +15,25 @@ export class Refinery {
   private processingProgress = 0;
   private accumulatedFuel = 0;
 
-  // Position
   public readonly x: number;
   public readonly y: number;
-  public readonly width = 96;
-  public readonly height = 80;
+  /** Depth in tiles where the refinery stands. Its clock runs at the rate of that depth. */
+  public readonly depthTiles: number;
   private readonly PROGRESS_BAR_WIDTH = 120;
   private readonly PROGRESS_BAR_HEIGHT = 16;
 
-  constructor(scene: Scene, tileX: number) {
+  constructor(scene: Scene, x: number, y: number, depthTiles: number, scale: number) {
     this.scene = scene;
+    this.x = x;
+    this.y = y;
+    this.depthTiles = depthTiles;
 
-    // Position refinery on surface
-    const tileSize = WORLD_CONFIG.tileSize;
-    this.x = tileX * tileSize + tileSize / 2;
-    this.y =
-      (WORLD_CONFIG.surfaceLevel - 1) * tileSize - this.height / 2 + tileSize;
-
-    // Create sprite
-    this.sprite = scene.add.sprite(this.x, this.y, "refinery");
+    this.sprite = scene.add.sprite(x, y, "refinery");
+    this.sprite.setScale(scale);
     this.sprite.setDepth(5);
 
     // Create progress bar above the building
-    const barY = this.y - this.height / 2 - 20;
+    const barY = this.y - this.sprite.displayHeight / 2 - 20;
     this.progressBarBg = scene.add.rectangle(
       this.x,
       barY,
@@ -77,20 +70,21 @@ export class Refinery {
     this.fuelCountText.setDepth(7);
 
     // Create smoke particles (will be activated when processing)
-    this.createSmokeEmitter();
+    this.createSmokeEmitter(scale);
   }
 
-  private createSmokeEmitter(): void {
-    // Create smoke texture
-    const graphics = this.scene.add.graphics();
-    graphics.fillStyle(0x666666, 0.6);
-    graphics.fillCircle(4, 4, 4);
-    graphics.generateTexture("smoke", 8, 8);
-    graphics.destroy();
+  private createSmokeEmitter(scale: number): void {
+    if (!this.scene.textures.exists("smoke")) {
+      const graphics = this.scene.add.graphics();
+      graphics.fillStyle(0x666666, 0.6);
+      graphics.fillCircle(4, 4, 4);
+      graphics.generateTexture("smoke", 8, 8);
+      graphics.destroy();
+    }
 
     this.smokeEmitter = this.scene.add.particles(
-      this.x + 30,
-      this.y - 35,
+      this.x + 30 * scale,
+      this.y - 35 * scale,
       "smoke",
       {
         speed: { min: 20, max: 40 },
@@ -116,30 +110,31 @@ export class Refinery {
     return fuel;
   }
 
+  /** Advances the refinery by `delta` milliseconds of its own clock. A large delta processes several coal. */
   update(delta: number): void {
-    // Start processing next coal if idle
-    if (!this.isProcessing && this.coalQueue > 0) {
-      this.isProcessing = true;
-      this.coalQueue--;
-      this.processingProgress = 0;
-      this.smokeEmitter?.start();
-    }
-
-    // Process current coal
-    if (this.isProcessing) {
-      this.processingProgress += delta;
-
-      if (this.processingProgress >= COAL_PROCESSING_TIME) {
-        // Produce 1 fuel
+    const processingTime = tweaks.refinerySecondsPerCoal * 1000;
+    let remaining = delta;
+    while (remaining > 0) {
+      if (!this.isProcessing) {
+        if (this.coalQueue === 0) break;
+        this.coalQueue--;
+        this.isProcessing = true;
+        this.processingProgress = 0;
+      }
+      const step = Math.min(remaining, processingTime - this.processingProgress);
+      this.processingProgress += step;
+      remaining -= step;
+      if (this.processingProgress >= processingTime) {
         this.accumulatedFuel += 1;
         this.isProcessing = false;
         this.processingProgress = 0;
-
-        // Stop smoke if queue is empty
-        if (this.coalQueue === 0) {
-          this.smokeEmitter?.stop();
-        }
       }
+    }
+
+    const active = this.isProcessing || this.coalQueue > 0;
+    if (this.smokeEmitter && this.smokeEmitter.emitting !== active) {
+      if (active) this.smokeEmitter.start();
+      else this.smokeEmitter.stop();
     }
 
     // Update visuals
@@ -153,7 +148,7 @@ export class Refinery {
       this.progressBarBg.setVisible(true);
       this.progressBarFill.setVisible(true);
 
-      const progress = this.processingProgress / COAL_PROCESSING_TIME;
+      const progress = this.processingProgress / (tweaks.refinerySecondsPerCoal * 1000);
       this.progressBarFill.width = (this.PROGRESS_BAR_WIDTH - 4) * progress;
       this.progressBarFill.fillColor = 0x888888; // Gray for coal
     } else {
@@ -191,7 +186,7 @@ export class Refinery {
 
   getCurrentProgress(): number | null {
     if (!this.isProcessing) return null;
-    return this.processingProgress / COAL_PROCESSING_TIME;
+    return this.processingProgress / (tweaks.refinerySecondsPerCoal * 1000);
   }
 
   getAccumulatedFuel(): number {

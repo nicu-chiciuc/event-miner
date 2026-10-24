@@ -2,6 +2,7 @@ import Phaser, { Physics, Input } from "phaser";
 import type { Scene } from "phaser";
 import { TileType, WORLD_CONFIG } from "../types/index.ts";
 import type { TileGenerator } from "../world/TileGenerator.ts";
+import { tweaks } from "../tweaks.ts";
 
 export class Player {
   private sprite: Physics.Arcade.Sprite;
@@ -18,15 +19,11 @@ export class Player {
     null;
   private onInteract: (() => void) | null = null;
 
-  private readonly MOVE_SPEED = 220;
-  private readonly FLY_THRUST = -400;
-  private readonly MINE_COOLDOWN = 200;
   private lastMineTime = 0;
 
   // Flight fuel system
   private fuel = 100;
   private readonly MAX_FUEL = 100;
-  private readonly FUEL_CONSUMPTION = 25; // fuel per second while flying
 
   // Coal inventory
   private coal = 6;
@@ -88,22 +85,30 @@ export class Player {
 
     // Horizontal movement
     if (movingLeft) {
-      body.setVelocityX(-this.MOVE_SPEED);
+      body.setVelocityX(-tweaks.moveSpeed);
     } else if (movingRight) {
-      body.setVelocityX(this.MOVE_SPEED);
+      body.setVelocityX(tweaks.moveSpeed);
+    }
+
+    // Holding down slides the vehicle to the centre of its column, so it drops into the shaft
+    // instead of resting on the edge of the next tile.
+    if (movingDown && !movingLeft && !movingRight) {
+      const tileSize = WORLD_CONFIG.tileSize;
+      const columnCentre = (Math.floor(this.sprite.x / tileSize) + 0.5) * tileSize;
+      body.setVelocityX((columnCentre - this.sprite.x) * 12);
     }
 
     // Flying (uses fuel)
     if (movingUp && this.fuel > 0) {
-      body.setVelocityY(this.FLY_THRUST);
-      this.fuel = Math.max(0, this.fuel - this.FUEL_CONSUMPTION * deltaSeconds);
+      body.setVelocityY(-tweaks.flyThrust);
+      this.fuel = Math.max(0, this.fuel - tweaks.fuelPerSecond * deltaSeconds);
     }
 
     // Mining
-    if (movingDown && time > this.lastMineTime + this.MINE_COOLDOWN) {
+    if (movingDown && time > this.lastMineTime + tweaks.mineCooldownMs) {
       this.tryMine(0, 1, time);
     }
-    if (time > this.lastMineTime + this.MINE_COOLDOWN) {
+    if (time > this.lastMineTime + tweaks.mineCooldownMs) {
       if (movingLeft) {
         this.tryMine(-1, 0, time);
       } else if (movingRight) {
@@ -166,6 +171,10 @@ export class Player {
     const deposited = this.coal;
     this.coal = 0;
     return deposited;
+  }
+
+  spendCoal(amount: number): void {
+    this.coal -= amount;
   }
 
   hasCoal(): boolean {
