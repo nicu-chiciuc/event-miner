@@ -21,7 +21,7 @@
     "wrangler": "4.156.0"
   },
   "dependencies": {
-    "phaser": "^4.0.0-rc.5"
+    "phaser": "4.0.0-rc.5"
   },
   "overrides": {
     "@effect/platform-node-shared": "4.0.5",
