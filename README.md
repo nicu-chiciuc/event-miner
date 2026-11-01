@@ -61,5 +61,5 @@ Production has a retain removal policy. Never destroy stage `prod`.
 To take over the existing Worker, run the Alchemy workflow on `main` with `adopt` and
 `plan_only` checked. Stop if the plan creates, deletes, or replaces production resources.
 After reviewing an adoption plan, run once with `adopt` checked and `plan_only` unchecked.
-Future pushes and manual runs use neither option. Workers Builds must be disconnected after
-the takeover so that only GitHub Actions deploys.
+Future pushes and manual runs use neither option. Workers Builds was disconnected after the
+takeover. Only GitHub Actions deploys this Worker.
