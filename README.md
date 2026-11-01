@@ -46,10 +46,20 @@ The build checks the TypeScript source and writes the static site to `dist`.
 This project is a keyboard-controlled game prototype. It has no backend or saved game state. The
 game textures are generated in the browser at run time.
 
-## Cloudflare Worker Previews
+## Deployment
 
-Workers Builds runs the `build` script, then `deploy` for production or
-`deploy:preview` for other branches. This app uses static assets and needs no Convex keys.
+GitHub Actions runs `npm ci`, then `npm run build`, and deploys `dist` with Alchemy.
+A push to `main` updates https://event-miner.pfp.workers.dev. Each pull request from this
+repository gets an `event-miner-pr-<number>` Worker and a comment with its URL. Closing the
+pull request destroys only its preview stage. Fork pull requests get no deployment secrets.
 
-See the [Worker Previews migration guide](https://samebase.com/docs/cloudflare-previews-migration)
-to switch an existing Worker.
+The stack is `nicu-chiciuc/event-miner`. State uses the `nicu` team's Convex state store.
+The site itself stays on Cloudflare and has no Convex backend. The workflow needs repository
+secrets `CONVEX_ACCESS_TOKEN`, `CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_ACCOUNT_ID`.
+Production has a retain removal policy. Never destroy stage `prod`.
+
+To take over the existing Worker, run the Alchemy workflow on `main` with `adopt` and
+`plan_only` checked. Stop if the plan creates, deletes, or replaces production resources.
+After reviewing an adoption plan, run once with `adopt` checked and `plan_only` unchecked.
+Future pushes and manual runs use neither option. Workers Builds must be disconnected after
+the takeover so that only GitHub Actions deploys.
