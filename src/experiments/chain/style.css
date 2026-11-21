@@ -1,0 +1,106 @@
+:root { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #e2eae5; background: #111e2a; font-synthesis: none; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; }
+button, select, input { font: inherit; }
+button, select { color: #d8e3e0; border: 1px solid #4b6271; background: #203443; border-radius: 2px; min-height: 36px; padding: 7px 12px; cursor: pointer; }
+button:hover { background: #304854; border-color: #8eb9ba; }
+button:focus-visible, select:focus-visible, a:focus-visible, canvas:focus-visible { outline: 2px solid #9be2d1; outline-offset: 3px; }
+button:disabled { opacity: .4; cursor: default; }
+button[aria-pressed="true"] { background: #3c514e; border-color: #eab47b; color: #fff0d9; }
+a { color: #9cb9c4; font-size: 11px; text-decoration: none; }
+a:hover { color: #d9f3e9; }
+canvas { position: fixed; inset: 0; width: 100vw; height: 100dvh; image-rendering: pixelated; touch-action: none; }
+.hud { position: fixed; top: 0; left: max(30px, calc((100vw - 1100px) / 2)); right: max(30px, calc((100vw - 1100px) / 2)); }
+.topbar { height: 70px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #3e5360; }
+.brand { font-weight: 800; font-size: 27px; letter-spacing: 6px; color: #eab47b; }
+.edition { color: #8ba3b4; font-size: 10px; letter-spacing: 1px; line-height: 1.6; margin-right: auto; }
+.topbar a { margin-right: 8px; }
+.topbar select { width: 152px; }
+.clockbar { display: grid; grid-template-columns: 1fr 1fr 1.35fr; gap: 20px; padding: 17px 0 14px; border-bottom: 1px solid #3e5360; }
+.eyebrow { color: #8faab9; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
+.clock { font-size: 21px; color: #e6eae0; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.clock em { font-style: normal; font-size: 12px; color: #8fd9c7; margin-left: 8px; }
+.exchange { font-size: 11px; color: #abc6ca; margin-top: 7px; }
+.depth-control { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+.depth-control output { color: #8fd9c7; min-width: 67px; font-size: 15px; }
+input[type="range"] { min-width: 30px; width: 100%; accent-color: #8fd9c7; cursor: ns-resize; }
+.mobile-goal { display: none; }
+.sidebar { position: fixed; top: 180px; right: max(30px, calc((100vw - 1100px) / 2)); width: 285px; }
+.level-number { font-size: 10px; color: #8faab9; letter-spacing: 2px; }
+h1 { font-size: 30px; font-weight: 500; margin: 8px 0 14px; color: #eab47b; }
+.intro { font-size: 12px; line-height: 1.8; color: #b6c8cd; margin: 0 0 20px; }
+.goal { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; }
+.goal strong { font-size: 24px; color: #9bd9c7; font-weight: 500; }
+.meter { height: 4px; background: #344955; margin: 10px 0 15px; }
+.meter span { display: block; height: 100%; width: 0; background: #8fd9c7; }
+.targets { display: grid; gap: 9px; font-size: 11px; color: #a6bdc7; }
+.targets .passed { color: #e7cc75; }
+.hint { border: 0; padding: 10px 0; min-height: 30px; background: none; color: #d5b68c; font-size: 11px; text-align: left; }
+.hint-text { margin: 0 0 12px; line-height: 1.6; color: #d2c2a2; font-size: 11px; }
+.inspector { margin-top: 16px; padding-top: 17px; border-top: 1px solid #3e5360; }
+.inspector h2 { font-size: 14px; color: #e8c49b; margin: 0 0 11px; font-weight: 500; text-transform: capitalize; }
+.inspector p { font-size: 11px; color: #abc0c8; margin: 7px 0; line-height: 1.6; }
+.inspector .rate { color: #9bd9c7; }
+.footer { position: fixed; bottom: 0; left: max(30px, calc((100vw - 1100px) / 2)); right: max(30px, calc((100vw - 1100px) / 2)); padding: 10px 0 17px; background: #111e2a; border-top: 1px solid #3e5360; }
+.status { color: #bacacb; font-size: 11px; min-height: 30px; padding: 0 0 10px; }
+.palette { display: flex; gap: 8px; }
+.palette button { flex: 1; height: 48px; text-align: left; font-size: 12px; }
+.palette .key { color: #8ea4b1; font-size: 10px; margin-right: 9px; }
+.palette .price { float: right; font-size: 10px; color: #aabcbf; }
+.footer-meta { display: flex; justify-content: space-between; gap: 12px; color: #8fa7b5; font-size: 10px; padding-top: 12px; }
+.budget { color: #ddc098; }
+.touch-controls { display: none; gap: 6px; margin-top: 8px; }
+.overlay { position: fixed; inset: 0; background: #0a1525c9; display: grid; place-items: center; z-index: 5; padding: 20px; }
+.overlay[hidden], [hidden] { display: none !important; }
+.card { max-width: 510px; width: 100%; padding: 30px; background: #203342; border: 2px solid #759eaa; box-shadow: 8px 8px 0 #0d1a25; }
+.card h2 { margin: 10px 0 20px; font-size: 32px; color: #eab47b; font-weight: 500; }
+.card p { line-height: 1.8; font-size: 12px; color: #c5d5d5; }
+.card .start { color: #8fd9c7; margin-top: 24px; font-size: 11px; }
+.result-stars { font-size: 28px; color: #e7cc75; letter-spacing: 8px; }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0; font-size: 12px; color: #b6c9d0; }
+.result-grid strong { color: #e3e8df; display: block; margin-top: 4px; font-size: 18px; font-weight: 500; }
+.result-actions { display: flex; gap: 10px; }
+.paused-label { position: fixed; top: 150px; left: 50%; transform: translateX(-50%); color: #e7cc75; font-size: 11px; letter-spacing: 2px; background: #111e2a; padding: 6px 12px; }
+@media (max-width: 900px) and (min-width: 760px) { .edition { display: none; } .brand { margin-right: auto; } .topbar { gap: 8px; } .sidebar { width: 260px; } }
+@media (max-width: 759px) {
+  .hud { left: 12px; right: 12px; }
+  .topbar { height: 53px; gap: 6px; }
+  .brand { font-size: 18px; letter-spacing: 3px; margin-right: auto; }
+  .edition { display: none; }
+  .topbar a { position: fixed; bottom: 10px; right: 12px; font-size: 9px; margin: 0; z-index: 2; }
+  .topbar select { width: 105px; font-size: 11px; padding: 5px; }
+  .topbar button { padding: 6px 8px; font-size: 11px; }
+  .clockbar { grid-template-columns: 1fr 1fr; gap: 7px 12px; padding: 10px 0 8px; }
+  .eyebrow { font-size: 9px; letter-spacing: 1px; }
+  .clock { font-size: 16px; margin-top: 3px; }
+  .clock em { font-size: 11px; margin-left: 3px; }
+  .view-control { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 3px 10px; }
+  .view-control > .eyebrow { display: none; }
+  .depth-control { margin: 0; }
+  .depth-control output { font-size: 12px; min-width: 47px; }
+  .exchange { font-size: 9px; line-height: 1.5; margin: 0; }
+  .mobile-goal { display: flex; justify-content: space-between; gap: 8px; color: #b9cdcc; font-size: 10px; padding-top: 9px; }
+  .sidebar { display: none; }
+  .sidebar.inspect-open { display: block; top: auto; bottom: 200px; left: 12px; right: 12px; width: auto; z-index: 3; background: #203342; border: 1px solid #7897a5; padding: 14px; }
+  .sidebar.inspect-open { max-height: 57dvh; overflow: auto; }
+  .sidebar.inspect-open .level-number, .sidebar.inspect-open h1, .sidebar.inspect-open .goal, .sidebar.inspect-open .meter { display: none; }
+  .sidebar.inspect-open .intro { font-size: 11px; margin-bottom: 12px; }
+  .sidebar.inspect-open .inspector { margin-top: 12px; }
+  .sidebar.inspect-open .inspector { border: 0; margin: 0; padding: 0; }
+  .footer { left: 12px; right: 12px; padding: 8px 0 10px; }
+  .status { font-size: 10px; line-height: 1.5; padding-bottom: 7px; min-height: 32px; }
+  .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .palette button { min-width: 0; height: 38px; min-height: 38px; padding: 5px 7px; font-size: 10px; }
+  .palette .key { margin-right: 5px; font-size: 9px; }
+  .palette .price { display: none; }
+  .footer-meta { font-size: 9px; padding-top: 9px; }
+  .keyboard-help { display: none; }
+  .footer-meta .budget { padding-right: 85px; }
+  .touch-controls { display: flex; }
+  .touch-controls button { flex: 1; font-size: 11px; min-height: 34px; padding: 5px; }
+  .card { padding: 22px; }
+  .card h2 { font-size: 26px; }
+  .paused-label { top: 162px; z-index: 2; }
+}
+@media (pointer: coarse) { .touch-controls { display: flex; } }
+@media (max-height: 650px) { .sidebar .intro { margin-bottom: 10px; } .sidebar .inspector { margin-top: 8px; } .sidebar .hint { display: none; } .footer { padding-bottom: 8px; } }
